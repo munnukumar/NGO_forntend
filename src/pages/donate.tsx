@@ -1,98 +1,82 @@
-import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useGetPlanQuery, useMeQuery, useSubscribeMutation } from "../services/api";
+import React from "react";
+import { useParams } from "react-router-dom";
+import {
+  useGetPlanQuery,
+  useMeQuery,
+  useSubscribeMutation,
+} from "../services/api";
+// import { loadStripe } from "@stripe/stripe-js";
 
-interface PaymentAccount {
-  _id: string;
-  type: string;
-  provider: string;
-  masked?: string;
-  isDefault: boolean;
-}
+// const stripePromise = loadStripe(
+//   "pk_test_51SdTJE0eANcMj95t3vMmErKjP5prMMq7wetalcNo97GNEreK4POQ80ne6QpArEJpsRws2HgacXl2nIJYbEVueiIb00eerp34u3"
+// ); // <-- Your Stripe publishable key
 
 export default function DonatePage() {
   const { planId } = useParams<{ planId: string }>();
-  const { data: planResponse } = useGetPlanQuery(planId!);
+  const { data: planResponse, isLoading } = useGetPlanQuery(planId!);
   const { data: meResponse } = useMeQuery(undefined);
-  const [subscribe] = useSubscribeMutation();
-  const [showAccounts, setShowAccounts] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const nav = useNavigate();
+  const [subscribeMutation, { isLoading: isSubscribing }] =
+    useSubscribeMutation();
 
-  // Handle plan
   const plan = planResponse?.data;
-  if (!plan) return <div className="p-8">Plan not found</div>;
+  const userId = meResponse?.data?._id;
 
-  // Handle user
-  const paymentAccounts: PaymentAccount[] = meResponse?.data?.paymentAccounts || [];
+  if (isLoading) return <div className="p-8">Loading...</div>;
+  if (!plan || !planId) return <div className="p-8">Plan not found</div>;
+  if (!userId) return <div className="p-8">User not logged in</div>;
+const handleSubscribeClick = async () => {
+  try {
+    // Call backend to create Stripe Checkout Session
+    const res = await subscribeMutation({
+      planId,
+      amountCents: plan.amountCents,
+    }).unwrap();
 
-  const handleSubscribeClick = () => {
-    if (!paymentAccounts.length) {
-      alert("No payment accounts found. Please add one first.");
-      return;
+    console.log("response:", res);
+
+    // ✅ Backend MUST return session.url
+    const checkoutUrl =
+      res?.data?.checkoutSession?.url ||
+      res?.checkoutSession?.url ||
+      res?.url;
+
+    if (!checkoutUrl) {
+      throw new Error("No Stripe checkout URL returned from backend");
     }
-    setShowAccounts(true);
-  };
 
-  const handleAccountSelect = async (accountId: string) => {
-    setSelectedAccountId(accountId);
+    // ✅ Redirect using browser (Stripe 2025+)
+    window.location.href = checkoutUrl;
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Donation failed";
+    console.error(err);
+    alert(message);
+  }
+};
 
-    try {
-      await subscribe({ planId: planId!, paymentAccountId: accountId }).unwrap();
-      alert("Subscribed! Donation will be scheduled.");
-      nav("/dashboard");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to subscribe");
-    }
-  };
 
   return (
-    <div className="max-w-3xl mx-auto mt-6 p-4 bg-white shadow rounded-lg">
-      <h2 className="text-xl font-semibold mb-2">Donate to {plan.title}</h2>
-      <p className="mb-2">
-        Amount: ${(plan.amountCents / 100).toFixed(2)} ({plan.interval})
+    <div className="max-w-3xl mx-auto mt-6 p-6 bg-white shadow rounded-lg">
+      <h2 className="text-2xl font-semibold mb-3">Donate to {plan.title}</h2>
+
+      <p className="mb-2 text-gray-700">
+        Amount: <strong>${(plan.amountCents / 100).toFixed(2)}</strong> (
+        {plan.interval})
       </p>
-      <p className="mb-4">
+
+      <p className="mb-4 text-gray-700">
         Raised: ${(plan.raisedCents / 100).toFixed(2)} / Goal: $
         {(plan.goalCents ? plan.goalCents / 100 : 0).toFixed(2)}
       </p>
 
-      {!showAccounts && (
-        <button
-          onClick={handleSubscribeClick}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
-        >
-          Subscribe
-        </button>
-      )}
-
-      {showAccounts && (
-        <div className="mt-4">
-          <h3 className="text-lg font-semibold mb-2">Select a Payment Account</h3>
-          <div className="space-y-2">
-            {paymentAccounts.map((acc: PaymentAccount) => (
-              <div
-                key={acc._id}
-                onClick={() => handleAccountSelect(acc._id)}
-                className={`p-3 border rounded cursor-pointer transition ${
-                  selectedAccountId === acc._id
-                    ? "border-blue-600 bg-blue-50"
-                    : "border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span>{acc.masked || acc.type}</span>
-                  {acc.isDefault && (
-                    <span className="text-xs text-gray-500">(Default)</span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-400">{acc.provider}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <button
+        onClick={handleSubscribeClick}
+        disabled={isSubscribing}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md transition font-medium disabled:opacity-50"
+      >
+        {isSubscribing ? "Processing..." : "subscribe"}
+      </button>
     </div>
   );
 }
+

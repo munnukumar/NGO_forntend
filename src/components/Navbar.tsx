@@ -19,7 +19,7 @@ export default function Navbar() {
     <nav className="w-full bg-white shadow-md">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">
+        <Link to="/dashboard" className="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">
           NGO Crowdfund
         </Link>
 

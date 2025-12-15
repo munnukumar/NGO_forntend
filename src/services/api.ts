@@ -34,10 +34,10 @@ export const api = createApi({
 
     // donations: subscribe
     subscribe: builder.mutation({
-      query: ({ planId, paymentAccountId }: { planId: string; paymentAccountId: string }) => ({
+      query: ({ planId, amountCents }: { planId: string; amountCents: number }) => ({
         url: `/donations/${planId}/subscribe`,
         method: "POST",
-        body: { paymentAccountId },
+        body: { amountCents },
       }),
       invalidatesTags: ["Donations", "Plans"],
     }),

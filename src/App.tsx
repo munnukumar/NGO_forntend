@@ -12,6 +12,8 @@ const Dashboard = lazy(() => import("./pages/dashboard"));
 const Donate = lazy(() => import("./pages/donate"));
 // const AdminDashboard = lazy(() => import("./pages/admin/admin-dashboard"));
 const CreatePlan = lazy(() => import("./pages/admin/create-paln"));
+import DonationSuccess from "./pages/DonationSuccess";
+import DonationCancel from "./pages/DonationCancel";
 
 function App() {
   return (
@@ -30,6 +32,8 @@ function App() {
         <Route element={<AuthenticatedLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/donate/:planId" element={<Donate />} />
+          <Route path="/donation-success" element={<DonationSuccess />} />
+          <Route path="/donation-cancel" element={<DonationCancel />} />
           {/* <Route path="/kyc" element={<Kyc />} /> */}
 
           {/* admin */}
